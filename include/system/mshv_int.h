@@ -97,6 +97,8 @@ void mshv_arch_init_vcpu(CPUState *cpu);
 void mshv_arch_destroy_vcpu(CPUState *cpu);
 void mshv_arch_amend_proc_features(
     union hv_partition_synthetic_processor_features *features);
+int mshv_arch_accel_init(AccelState *as, MachineState *ms, int mshv_fd);
+int mshv_arch_pre_init_vm(int vm_fd);
 int mshv_arch_post_init_vm(int vm_fd);
 void mshv_set_hvcall_args(AccelCPUState *state, void *mem, size_t page_size);
 

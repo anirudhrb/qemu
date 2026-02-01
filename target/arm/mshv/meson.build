@@ -1,6 +1,7 @@
 arm_mshv_ss = ss.source_set()
 
 arm_mshv_ss.add(files(
+  'mshv-all.c',
   'mshv-cpu.c',
 ))
 

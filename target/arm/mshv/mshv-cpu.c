@@ -15,6 +15,8 @@
 
 #include "qemu/error-report.h"
 #include "qemu/memalign.h"
+#include "hw/arm/bsa.h"
+#include "hw/arm/virt.h"
 
 #include "system/cpus.h"
 #include "target/arm/cpu.h"
@@ -25,6 +27,8 @@
 #include "system/mshv_int.h"
 #include "hw/hyperv/hvgdk_mini.h"
 #include "hw/hyperv/hvhdk_mini.h"
+
+#include "mshv_helpers.h"
 
 typedef struct ARMHostCPUFeatures {
     ARMISARegisters isar;
@@ -414,35 +418,49 @@ void mshv_arch_amend_proc_features(
 
 }
 
+int mshv_arch_pre_init_vm(int vm_fd)
+{
+    int ret;
+    VirtMachineState *vms = VIRT_MACHINE(qdev_get_machine());
+
+    ret = set_partition_prop(vm_fd,
+                            HV_PARTITION_PROPERTY_GICD_BASE_ADDRESS,
+                            vms->memmap[VIRT_GIC_DIST].base);
+    if (ret < 0) {
+        return ret;
+    }
+
+    ret = set_partition_prop(vm_fd,
+                        HV_PARTITION_PROPERTY_GITS_TRANSLATER_BASE_ADDRESS,
+                        vms->memmap[VIRT_GIC_ITS].base);
+    if (ret < 0) {
+        return ret;
+    }
+
+    ret = set_partition_prop(vm_fd,
+                        HV_PARTITION_PROPERTY_GIC_LPI_INT_ID_BITS,
+                        0);
+    if (ret < 0) {
+        return ret;
+    }
+
+    ret = set_partition_prop(vm_fd,
+                        HV_PARTITION_PROPERTY_GIC_PPI_OVERFLOW_INTERRUPT_FROM_CNTV,
+                        ARCH_TIMER_VIRT_IRQ);
+    if (ret < 0) {
+        return ret;
+    }
+
+    ret = set_partition_prop(vm_fd,
+                        HV_PARTITION_PROPERTY_GIC_PPI_PERFORMANCE_MONITORS_INTERRUPT,
+                        VIRTUAL_PMU_IRQ);
+
+    return ret;
+}
+
 int mshv_arch_post_init_vm(int vm_fd)
 {
     return 0;
-}
-
-static uint32_t mshv_arm_get_ipa_bit_size(int mshv_fd)
-{
-    int ret;
-    struct hv_input_get_partition_property in = {0};
-    struct hv_output_get_partition_property out = {0};
-    struct mshv_root_hvcall args = {0};
-
-    in.partition_id = HV_PARTITION_ID_SELF;
-    in.property_code = HV_PARTITION_PROPERTY_PHYSICAL_ADDRESS_WIDTH;
-
-    args.code = HVCALL_GET_PARTITION_PROPERTY;
-    args.in_sz = sizeof(in);
-    args.in_ptr = (uint64_t)&in;
-    args.out_sz = sizeof(out);
-    args.out_ptr = (uint64_t)&out;
-
-    ret = mshv_hvcall(mshv_fd, &args);
-
-    if (ret < 0) {
-        error_report("Failed to get IPA size");
-        return -1;
-    }
-
-    return out.property_value;
 }
 
 static void clamp_id_aa64mmfr0_parange_to_ipa_size(int mshv_fd, ARMISARegisters *isar)

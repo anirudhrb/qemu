@@ -200,6 +200,11 @@ static int create_vm(int mshv_fd, int *vm_fd)
         return -1;
     }
 
+    ret = mshv_arch_pre_init_vm(*vm_fd);
+    if (ret < 0) {
+        return -1;
+    }
+
     ret = initialize_vm(*vm_fd);
     if (ret < 0) {
         return -1;
@@ -431,6 +436,11 @@ static int mshv_init(AccelState *as, MachineState *ms)
     s->vm = 0;
 
     ret = init_mshv(&mshv_fd);
+    if (ret < 0) {
+        return -1;
+    }
+
+    ret = mshv_arch_accel_init(as, ms, mshv_fd);
     if (ret < 0) {
         return -1;
     }
