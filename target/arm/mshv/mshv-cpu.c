@@ -588,7 +588,8 @@ static bool mshv_arm_get_host_cpu_features(ARMHostCPUFeatures *ahcf)
     ahcf->features = (1ULL << ARM_FEATURE_V8) |
                      (1ULL << ARM_FEATURE_AARCH64) |
                      (1ULL << ARM_FEATURE_PMU) |
-                     (1ULL << ARM_FEATURE_GENERIC_TIMER);
+                     (1ULL << ARM_FEATURE_GENERIC_TIMER) |
+                     (1ULL << ARM_FEATURE_NEON);
 
     clamp_id_aa64mmfr0_parange_to_ipa_size(mshv_fd, &ahcf->isar);
 
