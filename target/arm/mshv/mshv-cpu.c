@@ -373,27 +373,10 @@ int mshv_run_vcpu(int vm_fd, CPUState *cpu, hv_message *msg, MshvVmExit *exit)
 void mshv_arch_init_vcpu(CPUState *cpu)
 {
     AccelCPUState *state = cpu->accel;
-    ARMCPU *arm_cpu = ARM_CPU(cpu);
     void *mem;
-    hv_register_assoc assocs[2];
 
     mem = qemu_memalign(HV_HYP_PAGE_SIZE, 2 * HV_HYP_PAGE_SIZE);
-
-    if (!mem) {
-        error_report("Failed to allocate memory for hvcall_args");
-        return;
-    }
-
-    assocs[0].name = HV_ARM64_REGISTER_ID_MIDR_EL1;
-    assocs[0].value.reg64 = arm_cpu->midr;
-    assocs[1].name = HV_ARM64_REGISTER_ID_MPIDR_EL1;
-    assocs[1].value.reg64 = deposit64(arm_cpu->mp_affinity, 31, 1, 1);
-
     mshv_set_hvcall_args(state, mem, HV_HYP_PAGE_SIZE);
-
-    if (mshv_set_generic_regs(cpu, assocs, 2) < 0) {
-        error_report("Failed to set initial generic registers");
-    }
 }
 
 void mshv_arch_destroy_vcpu(CPUState *cpu)
