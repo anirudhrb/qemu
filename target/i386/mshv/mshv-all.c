@@ -38,6 +38,11 @@ int mshv_arch_accel_init(AccelState *as, MachineState *ms, int mshv_fd)
     mshv_init_mmio_emu();
 }
 
+int mshv_arch_pre_init_vm(int vm_fd)
+{
+    return 0;
+}
+
 /*
  * Default Microsoft Hypervisor behavior for unimplemented MSR is to send a
  * fault to the guest if it tries to access it. It is possible to override
