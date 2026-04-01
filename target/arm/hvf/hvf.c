@@ -13,6 +13,7 @@
 #include "qemu/error-report.h"
 #include "qemu/log.h"
 
+#include "syndrome.h"
 #include "system/runstate.h"
 #include "system/hvf.h"
 #include "system/hvf_int.h"
@@ -35,6 +36,7 @@
 #include "target/arm/multiprocessing.h"
 #include "target/arm/gtimer.h"
 #include "target/arm/trace.h"
+#include "target/arm/helper.h"
 #include "trace.h"
 #include "migration/vmstate.h"
 
@@ -2072,11 +2074,14 @@ static int hvf_handle_exception(CPUState *cpu, hv_vcpu_exit_exception_t *excp)
 {
     CPUARMState *env = cpu_env(cpu);
     ARMCPU *arm_cpu = env_archcpu(env);
-    EsrEl2 syndrome = excp->syndrome;
-    uint32_t ec = syn_get_ec(syndrome);
+    uint64_t syndrome;
+    uint32_t ec;
     bool advance_pc = false;
     hv_return_t r;
     int ret = 0;
+
+    syndrome = excp->syndrome;
+    ec = syn_get_ec(syndrome);
 
     switch (ec) {
     case EC_SOFTWARESTEP: {
@@ -2123,8 +2128,9 @@ static int hvf_handle_exception(CPUState *cpu, hv_vcpu_exit_exception_t *excp)
         break;
     }
     case EC_DATAABORT: {
+        EsrEl2 esr_el2 = { .raw = syndrome };
         IssDataAbort iss = { 0 };
-        iss.raw = syndrome.iss;
+        iss.raw = esr_el2.iss;
         uint64_t ipa = excp->physical_address;
         AddressSpace *as = cpu_get_address_space(cpu, ARMASIdx_NS);
 
@@ -2174,21 +2180,21 @@ static int hvf_handle_exception(CPUState *cpu, hv_vcpu_exit_exception_t *excp)
         ret = hvf_arch_get_registers(cpu);
         if (ret < 0) {
             error_report("Failed to get registers for MMIO, syndrome=0x%llx, gpa=0x%llx",
-                         syndrome, ipa);
+                         esr_el2.raw, ipa);
             return -1;
         }
 
-        ret = arm_emulate_mmio(cpu, syndrome, ipa);
+        ret = arm_emulate_mmio(cpu, esr_el2, ipa);
         if (ret < 0) {
             error_report("Failed to emulate MMIO, syndrome=0x%llx, gpa=0x%llx",
-                         syndrome, ipa);
+                         esr_el2.raw, ipa);
             return -1;
         }
 
-        ret = hvf_arch_set_registers(cpu);
+        ret = hvf_arch_put_registers(cpu);
         if (ret < 0) {
             error_report("Failed to set registers after MMIO emulation, syndrome=0x%llx, gpa=0x%llx",
-                         syndrome, ipa);
+                         esr_el2.raw, ipa);
             return -1;
         }
         advance_pc = true;
