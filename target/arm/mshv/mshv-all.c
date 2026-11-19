@@ -324,7 +324,7 @@ int mshv_arch_pre_init_vm(int vm_fd)
 
     ret = set_partition_prop(vm_fd,
                         HV_PARTITION_PROPERTY_GITS_TRANSLATER_BASE_ADDRESS,
-                        vms->memmap[VIRT_GIC_ITS].base);
+                        vms->memmap[VIRT_GIC_V2M].base);
     if (ret < 0) {
         return ret;
     }
